@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#007BFF" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>Smoke Tracker System</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f0f0f5;
+    }
+    h1 {
+      text-align: center;
+      color: #222;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: #fff;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+    th {
+      background-color: #007BFF;
+      color: white;
+    }
+    button, select, input[type="text"] {
+      margin: 10px 5px;
+      padding: 10px;
+      font-size: 16px;
+    }
+    .button-container {
+      text-align: center;
+    }
+    input[type="text"] {
+      width: 200px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Smoke Tracker System</h1>
+  <div class="button-container">
+    <input type="text" id="noteInput" placeholder="Add a note (optional)">
+    <button onclick="logEntry()">Log Now</button>
+    <button onclick="resetTable()">Reset</button>
+    <button onclick="downloadExcel()">Download Excel</button>
+    <select id="filterDay" onchange="filterByDay()">
+      <option value="">All Days</option>
+      <option>Sunday</option>
+      <option>Monday</option>
+      <option>Tuesday</option>
+      <option>Wednesday</option>
+      <option>Thursday</option>
+      <option>Friday</option>
+      <option>Saturday</option>
+    </select>
+  </div>
+
+  <table id="logTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Time</th>
+        <th>Day</th>
+        <th>Note</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const STORAGE_KEY = "smokeTrackerLogs";
+    function getCurrentLogEntry(note) {
+      const now = new Date();
+      return {
+        date: now.toLocaleDateString(),
+        time: now.toLocaleTimeString(),
+        day: now.toLocaleDateString(undefined, { weekday: 'long' }),
+        note: note || ""
+      };
+    }
+    function loadLogs() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    }
+    function saveLogs(logs) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+    }
+    function displayLogs(logs) {
+      const tbody = document.querySelector("#logTable tbody");
+      tbody.innerHTML = "";
+      logs.forEach(log => {
+        const row = tbody.insertRow();
+        row.insertCell(0).innerText = log.date;
+        row.insertCell(1).innerText = log.time;
+        row.insertCell(2).innerText = log.day;
+        row.insertCell(3).innerText = log.note;
+      });
+    }
+    function logEntry() {
+      const note = document.getElementById("noteInput").value.trim();
+      const entry = getCurrentLogEntry(note);
+      const logs = loadLogs();
+      logs.push(entry);
+      saveLogs(logs);
+      displayLogs(logs);
+      document.getElementById("noteInput").value = "";
+    }
+    function resetTable() {
+      if (confirm("Are you sure you want to clear all logs?")) {
+        localStorage.removeItem(STORAGE_KEY);
+        displayLogs([]);
+      }
+    }
+    function filterByDay() {
+      const filter = document.getElementById("filterDay").value;
+      const allLogs = loadLogs();
+      const filtered = filter ? allLogs.filter(log => log.day === filter) : allLogs;
+      displayLogs(filtered);
+    }
+    function downloadExcel() {
+      const table = document.getElementById("logTable");
+      const ws = XLSX.utils.table_to_sheet(table);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Logs");
+      XLSX.writeFile(wb, "Smoke_Tracker_Report.xlsx");
+    }
+    window.onload = () => {
+      displayLogs(loadLogs());
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('service-worker.js');
+      }
+    };
+  </script>
+</body>
+</html>
